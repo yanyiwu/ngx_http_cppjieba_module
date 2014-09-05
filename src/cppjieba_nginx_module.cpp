@@ -4,7 +4,12 @@ extern "C" {
 #include <ngx_http.h>
 }
 
-static const char* RESPONSE_STRING = "hello cppjieba nginx module.";
+#include "dict_path.h"
+#include "CppJieba/MixSegment.hpp"
+
+static const char* const RESPONSE_STRING = "hello cppjieba nginx module.";
+
+CppJieba::MixSegment mix_segment(DICT_PATH, HMM_PATH, USER_DICT_PATH);
 
 typedef struct {
     ngx_str_t output_words;
