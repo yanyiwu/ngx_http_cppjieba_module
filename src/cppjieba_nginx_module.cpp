@@ -10,35 +10,10 @@ extern "C" {
 using std::string;
 using std::vector;
 
-static const char* const RESPONSE_STRING = "hello cppjieba nginx module.";
-
 inline unsigned char fromHex(unsigned char x) 
 {
     return isdigit(x) ? x - '0' : x - 'A' + 10;
 }
-//inline unsigned char toHex(unsigned char x)
-//{
-//    return x > 9 ? x -10 + 'A': x + '0';
-//}
-//static void URLEncode(const string &sIn, string& sOut)
-//{
-//    for( size_t ix = 0; ix < sIn.size(); ix++ )
-//    {      
-//        unsigned char buf[4];
-//        memset( buf, 0, 4 );
-//        if( isalnum( (unsigned char)sIn[ix] ) )
-//        {      
-//            buf[0] = sIn[ix];
-//        }
-//        else
-//        {
-//            buf[0] = '%';
-//            buf[1] = toHex( (unsigned char)sIn[ix] >> 4 );
-//            buf[2] = toHex( (unsigned char)sIn[ix] % 16);
-//        }
-//        sOut += (char *)buf;
-//    }
-//};
 
 static void URLDecode(const string &sIn, string& sOut)
 {
@@ -62,7 +37,6 @@ static void URLDecode(const string &sIn, string& sOut)
         sOut += (char)ch;
     }
 }
-//CppJieba::MixSegment mix_segment(DICT_PATH, HMM_PATH, USER_DICT_PATH);
 CppJieba::MixSegment * mix_segment;//(DICT_PATH, HMM_PATH, USER_DICT_PATH);
 
 typedef struct {
@@ -121,12 +95,14 @@ ngx_module_t cppjieba_nginx_module = {
     NGX_MODULE_V1_PADDING
 };
 
+/*
 static void print_debug_file(const std::string& str) {
     FILE * fp;
     fp = fopen("/tmp/nginx_debug.log", "a");
     fprintf(fp, "%s\n", str.c_str());
     fclose(fp);
 }
+*/
 
 static ngx_int_t ngx_cppjieba_handler(ngx_http_request_t* r) {
     ngx_int_t rc;
@@ -138,31 +114,24 @@ static ngx_int_t ngx_cppjieba_handler(ngx_http_request_t* r) {
     }
 
 
-    print_debug_file("method is get");
     std::string uri((const char*)r->uri.data, r->uri.len);
-    print_debug_file(uri);
     if(r->args.len == 0) {
         return NGX_HTTP_BAD_REQUEST;
     }
     string args((const char*)r->args.data, r->args.len);
-    print_debug_file(args);
     string sentence;
     URLDecode(args, sentence);
     vector<string> words;
     mix_segment->cut(sentence, words);
     string response;
     response << words;
-    //URLEncode(tmp, response);
-    print_debug_file(response);
 
-    //b = (ngx_buf_t*)ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
     b = ngx_create_temp_buf(r->pool, response.size());
     if (b == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     ngx_memcpy(b->pos, response.c_str(), response.size());
-    //b->pos = (u_char*)RESPONSE_STRING;
     b->last = b->pos + response.size();
     b->last_buf = 1;
 
