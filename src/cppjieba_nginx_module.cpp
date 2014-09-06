@@ -16,6 +16,29 @@ inline unsigned char fromHex(unsigned char x)
 {
     return isdigit(x) ? x - '0' : x - 'A' + 10;
 }
+//inline unsigned char toHex(unsigned char x)
+//{
+//    return x > 9 ? x -10 + 'A': x + '0';
+//}
+//static void URLEncode(const string &sIn, string& sOut)
+//{
+//    for( size_t ix = 0; ix < sIn.size(); ix++ )
+//    {      
+//        unsigned char buf[4];
+//        memset( buf, 0, 4 );
+//        if( isalnum( (unsigned char)sIn[ix] ) )
+//        {      
+//            buf[0] = sIn[ix];
+//        }
+//        else
+//        {
+//            buf[0] = '%';
+//            buf[1] = toHex( (unsigned char)sIn[ix] >> 4 );
+//            buf[2] = toHex( (unsigned char)sIn[ix] % 16);
+//        }
+//        sOut += (char *)buf;
+//    }
+//};
 
 static void URLDecode(const string &sIn, string& sOut)
 {
@@ -110,55 +133,46 @@ static ngx_int_t ngx_cppjieba_handler(ngx_http_request_t* r) {
     ngx_buf_t* b;
     ngx_chain_t out;
 
-    //ngx_cppjieba_loc_conf_t* hlcf;
-    //hlcf = ngx_http_get_module_loc_conf(r, cppjieba_nginx_module);
-
-    r->headers_out.status = NGX_HTTP_OK;
-    r->headers_out.content_length_n = strlen(RESPONSE_STRING);
-    ngx_str_t type = ngx_string("text/plain");
-    r->headers_out.content_type = type;
-    //r->headers_out.content_type.len = sizeof("text/plain") - 1;
-    //r->headers_out.content_type.data = (u_char*)"text/plain";
-
-    if (r->method == NGX_HTTP_GET) {
-        print_debug_file("method is get");
-        std::string uri((const char*)r->uri.data, r->uri.len);
-        print_debug_file(uri);
-        if(r->args.len > 0) {
-            string args((const char*)r->args.data, r->args.len);
-            print_debug_file(args);
-            string sentence;
-            URLDecode(args, sentence);
-            vector<string> words;
-            mix_segment->cut(sentence, words);
-            string res;
-            res << words;
-            print_debug_file(res);
-        }
-        else {
-            print_debug_file("args.len == 0");
-        }
+    if(!(r->method & NGX_HTTP_GET)) {
+        return NGX_HTTP_NOT_ALLOWED;
     }
 
-    b = (ngx_buf_t*)ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+
+    print_debug_file("method is get");
+    std::string uri((const char*)r->uri.data, r->uri.len);
+    print_debug_file(uri);
+    if(r->args.len == 0) {
+        return NGX_HTTP_BAD_REQUEST;
+    }
+    string args((const char*)r->args.data, r->args.len);
+    print_debug_file(args);
+    string sentence;
+    URLDecode(args, sentence);
+    vector<string> words;
+    mix_segment->cut(sentence, words);
+    string response;
+    response << words;
+    //URLEncode(tmp, response);
+    print_debug_file(response);
+
+    //b = (ngx_buf_t*)ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+    b = ngx_create_temp_buf(r->pool, response.size());
+    if (b == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    ngx_memcpy(b->pos, response.c_str(), response.size());
+    //b->pos = (u_char*)RESPONSE_STRING;
+    b->last = b->pos + response.size();
+    b->last_buf = 1;
 
     out.buf = b;
     out.next = NULL;
 
-    b->pos = (u_char*)RESPONSE_STRING;
-    b->last = b->pos + strlen(RESPONSE_STRING);
-    b->memory = 1;
-    b->last_buf = 1;
-
-    //b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
-
-    //out[1].buf = b;
-    //out[1].next = NULL;
-
-    //b->pos = hlcf->output_words.data;
-    //b->last = hlcf->output_words.data + (hlcf->output_words.len);
-    //b->memory = 1;
-    //b->last_buf = 1;
+    r->headers_out.status = NGX_HTTP_OK;
+    r->headers_out.content_length_n = response.size();
+    ngx_str_t type = ngx_string("text/plain");
+    r->headers_out.content_type = type;
 
     rc = ngx_http_send_header(r);
     if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
