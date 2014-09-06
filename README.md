@@ -2,7 +2,7 @@
 
 ## 简介
 
-[cppjieba] 的 `Nginx` 扩展模块.
+[CppJieba] 的 `Nginx` 扩展模块.
 
 ## 用法
 
@@ -17,7 +17,7 @@ git clone git://github.com/aszxqw/ngx_http_cppjieba_module.git /tmp/ngx_http_cpp
 进入 Nginx 源码目录：
 
 ```
-./configure --add-module=/home/yanyiwu/code/ngx_http_cppjieba_module/src
+./configure --add-module=/tmp/ngx_http_cppjieba_module/src
 ```
 
 因为 `ngx_http_cppjieba_module` 是 `C++` 源码，所以作为 `Nginx` 模块编译的时候需要 修改 `obj/Makefile`
@@ -50,4 +50,4 @@ location /cppjieba {
 
 `i@yanyiwu.com`
 
-[cppjieba]:https://github.com/aszxqw/cppjieba
+[CppJieba]:https://github.com/aszxqw/cppjieba
