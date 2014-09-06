@@ -46,7 +46,6 @@ location /cppjieba {
 }
 ```
 
-```
 如果 `ngx_http_cppjieba_module` 的源码路径不是 `/tmp/ngx_http_cppjieba_module`， 将上述过程的 `/tmp/xxx` 改为 `/your/path/xxx` 即可。
 
 ## 启动 Nginx
