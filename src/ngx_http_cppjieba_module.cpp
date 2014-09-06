@@ -14,6 +14,31 @@ inline unsigned char fromHex(unsigned char x)
 {
     return isdigit(x) ? x - '0' : x - 'A' + 10;
 }
+/*
+inline unsigned char toHex(unsigned char x)
+{
+    return x > 9 ? x -10 + 'A': x + '0';
+}
+inline void URLEncode(const string &sIn, string& sOut)
+{
+    for( size_t ix = 0; ix < sIn.size(); ix++ )
+    {      
+        unsigned char buf[4];
+        memset( buf, 0, 4 );
+        if( isalnum( (unsigned char)sIn[ix] ) )
+        {      
+            buf[0] = sIn[ix];
+        }
+        else
+        {
+            buf[0] = '%';
+            buf[1] = toHex( (unsigned char)sIn[ix] >> 4 );
+            buf[2] = toHex( (unsigned char)sIn[ix] % 16);
+        }
+        sOut += (char *)buf;
+    }
+};
+*/
 
 static void URLDecode(const string &sIn, string& sOut)
 {
@@ -41,49 +66,49 @@ CppJieba::MixSegment * mix_segment;//(DICT_PATH, HMM_PATH, USER_DICT_PATH);
 
 typedef struct {
     ngx_str_t output_words;
-} ngx_cppjieba_loc_conf_t;
+} ngx_http_cppjieba_loc_conf_t;
 
 // To process HelloWorld command arguments
-static char* ngx_cppjieba(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
+static char* ngx_http_cppjieba(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 
 // Allocate memory for HelloWorld command
-static void* ngx_cppjieba_create_loc_conf(ngx_conf_t* cf);
+static void* ngx_http_cppjieba_create_loc_conf(ngx_conf_t* cf);
 
 // Copy HelloWorld argument to another place
-static char* ngx_cppjieba_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child);
+static char* ngx_http_cppjieba_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child);
 
-static ngx_int_t ngx_cppjieba_init(ngx_conf_t *cf) ;
+static ngx_int_t ngx_http_cppjieba_init(ngx_conf_t *cf) ;
 
 // Structure for the HelloWorld command
-static ngx_command_t ngx_cppjieba_commands[] = {
+static ngx_command_t ngx_http_cppjieba_commands[] = {
     {
         ngx_string("cppjieba"), // The command name
         NGX_HTTP_LOC_CONF | NGX_CONF_TAKE1,
-        ngx_cppjieba, // The command handler
+        ngx_http_cppjieba, // The command handler
         NGX_HTTP_LOC_CONF_OFFSET,
-        offsetof(ngx_cppjieba_loc_conf_t, output_words),
+        offsetof(ngx_http_cppjieba_loc_conf_t, output_words),
         NULL
     },
     ngx_null_command
 };
 
 // Structure for the HelloWorld context
-static ngx_http_module_t cppjieba_nginx_module_ctx = {
+static ngx_http_module_t ngx_http_cppjieba_module_ctx = {
     NULL,
-    ngx_cppjieba_init,  //NULL,
-    NULL,
-    NULL,
+    ngx_http_cppjieba_init,  //NULL,
     NULL,
     NULL,
-    ngx_cppjieba_create_loc_conf,
-    ngx_cppjieba_merge_loc_conf
+    NULL,
+    NULL,
+    ngx_http_cppjieba_create_loc_conf,
+    ngx_http_cppjieba_merge_loc_conf
 };
 
 // Structure for the HelloWorld module, the most important thing
-ngx_module_t cppjieba_nginx_module = {
+ngx_module_t ngx_http_cppjieba_module = {
     NGX_MODULE_V1,
-    &cppjieba_nginx_module_ctx,
-    ngx_cppjieba_commands,
+    &ngx_http_cppjieba_module_ctx,
+    ngx_http_cppjieba_commands,
     NGX_HTTP_MODULE,
     NULL,
     NULL,
@@ -104,7 +129,7 @@ static void print_debug_file(const std::string& str) {
 }
 */
 
-static ngx_int_t ngx_cppjieba_handler(ngx_http_request_t* r) {
+static ngx_int_t ngx_http_cppjieba_handler(ngx_http_request_t* r) {
     ngx_int_t rc;
     ngx_buf_t* b;
     ngx_chain_t out;
@@ -113,18 +138,22 @@ static ngx_int_t ngx_cppjieba_handler(ngx_http_request_t* r) {
         return NGX_HTTP_NOT_ALLOWED;
     }
 
-
-    std::string uri((const char*)r->uri.data, r->uri.len);
-    if(r->args.len == 0) {
+    // args is s=xxxxx
+    if(r->args.len < 2) {
         return NGX_HTTP_BAD_REQUEST;
     }
-    string args((const char*)r->args.data, r->args.len);
+
+    string args((const char*)(r->args.data + 2), r->args.len - 2);
     string sentence;
     URLDecode(args, sentence);
     vector<string> words;
     mix_segment->cut(sentence, words);
     string response;
+    //string tmp;
+    //tmp << words;
+    //URLEncode(tmp, response);
     response << words;
+
 
     b = ngx_create_temp_buf(r->pool, response.size());
     if (b == NULL) {
@@ -151,10 +180,10 @@ static ngx_int_t ngx_cppjieba_handler(ngx_http_request_t* r) {
     return ngx_http_output_filter(r, &out);
 }
 
-static void* ngx_cppjieba_create_loc_conf(ngx_conf_t* cf) {
-    ngx_cppjieba_loc_conf_t* conf;
+static void* ngx_http_cppjieba_create_loc_conf(ngx_conf_t* cf) {
+    ngx_http_cppjieba_loc_conf_t* conf;
 
-    conf = (ngx_cppjieba_loc_conf_t*)ngx_pcalloc(cf->pool, sizeof(ngx_cppjieba_loc_conf_t));
+    conf = (ngx_http_cppjieba_loc_conf_t*)ngx_pcalloc(cf->pool, sizeof(ngx_http_cppjieba_loc_conf_t));
     if (conf == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -164,22 +193,22 @@ static void* ngx_cppjieba_create_loc_conf(ngx_conf_t* cf) {
     return conf;
 }
 
-static char* ngx_cppjieba_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child) {
-    ngx_cppjieba_loc_conf_t* prev = (ngx_cppjieba_loc_conf_t*)parent;
-    ngx_cppjieba_loc_conf_t* conf = (ngx_cppjieba_loc_conf_t*)child;
+static char* ngx_http_cppjieba_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child) {
+    ngx_http_cppjieba_loc_conf_t* prev = (ngx_http_cppjieba_loc_conf_t*)parent;
+    ngx_http_cppjieba_loc_conf_t* conf = (ngx_http_cppjieba_loc_conf_t*)child;
     ngx_conf_merge_str_value(conf->output_words, prev->output_words, "Nginx");
     return NGX_CONF_OK;
 }
 
-static char* ngx_cppjieba(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
+static char* ngx_http_cppjieba(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
     ngx_http_core_loc_conf_t* clcf;
     clcf = (ngx_http_core_loc_conf_t*)ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
-    clcf->handler = ngx_cppjieba_handler;
+    clcf->handler = ngx_http_cppjieba_handler;
     ngx_conf_set_str_slot(cf, cmd, conf);
     return NGX_CONF_OK;
 }
 
-static ngx_int_t ngx_cppjieba_init(ngx_conf_t *cf) 
+static ngx_int_t ngx_http_cppjieba_init(ngx_conf_t *cf) 
 {
     mix_segment = new CppJieba::MixSegment(DICT_PATH, HMM_PATH, USER_DICT_PATH);
     return NGX_OK;
