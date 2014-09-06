@@ -77,7 +77,7 @@ static void* ngx_http_cppjieba_create_loc_conf(ngx_conf_t* cf);
 // Copy HelloWorld argument to another place
 static char* ngx_http_cppjieba_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child);
 
-static ngx_int_t ngx_http_cppjieba_init(ngx_conf_t *cf) ;
+static ngx_int_t ngx_http_cppjieba_init(ngx_cycle_t *cf) ;
 
 // Structure for the HelloWorld command
 static ngx_command_t ngx_http_cppjieba_commands[] = {
@@ -95,7 +95,7 @@ static ngx_command_t ngx_http_cppjieba_commands[] = {
 // Structure for the HelloWorld context
 static ngx_http_module_t ngx_http_cppjieba_module_ctx = {
     NULL,
-    ngx_http_cppjieba_init,  //NULL,
+    NULL,
     NULL,
     NULL,
     NULL,
@@ -112,7 +112,7 @@ ngx_module_t ngx_http_cppjieba_module = {
     NGX_HTTP_MODULE,
     NULL,
     NULL,
-    NULL,
+    ngx_http_cppjieba_init,  //NULL,
     NULL,
     NULL,
     NULL,
@@ -208,7 +208,7 @@ static char* ngx_http_cppjieba(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
     return NGX_CONF_OK;
 }
 
-static ngx_int_t ngx_http_cppjieba_init(ngx_conf_t *cf) 
+static ngx_int_t ngx_http_cppjieba_init(ngx_cycle_t *cf) 
 {
     mix_segment = new CppJieba::MixSegment(DICT_PATH, HMM_PATH, USER_DICT_PATH);
     return NGX_OK;
