@@ -6,15 +6,17 @@
 
 ## 用法
 
+### 安装和配置
+
 以下用法假设 `ngx_http_cppjieba_module` 下载后存放的地址是 `/tmp/ngx_http_cppjieba_module` (这个地址在 `Nginx` 编译时和词典加载时候会用到)   
 
-下载源码：
+#### 下载源码：
 
 ```
 git clone git://github.com/aszxqw/ngx_http_cppjieba_module.git /tmp/ngx_http_cppjieba_module
 ```
 
-进入 Nginx 源码目录：
+#### 进入 `Nginx` 源码目录：
 
 ```
 ./configure --add-module=/tmp/ngx_http_cppjieba_module/src
@@ -45,6 +47,33 @@ location /cppjieba {
 ```
 
 如果 `ngx_http_cppjieba_module` 的源码路径不是 `/tmp/ngx_http_cppjieba_module`， 将上述过程的 `/tmp/xxx` 改为 `/your/path/xxx` 即可。
+
+## 启动 Nginx
+
+```
+/usr/local/nginx/sbin/nginx
+```
+
+## 测试 
+
+```
+curl "http://127.0.0.1/cppjieba?s=长春市长春药店"
+```
+
+预期结果：
+
+```
+["长春市", "长春", "药店"]
+```
+
+用 `chrome` 打开上述链接也可以，不过要 **记得** 设置浏览器的页面编码方式为 `utf-8` 。
+
+
+## 演示
+
+```
+http://yanyiwu.com/cppjieba?s=长春市长春药店
+```
 
 ## 客服
 
