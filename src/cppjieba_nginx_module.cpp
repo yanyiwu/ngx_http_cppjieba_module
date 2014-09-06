@@ -7,9 +7,40 @@ extern "C" {
 #include "dict_path.h"
 #include "CppJieba/MixSegment.hpp"
 
+using std::string;
+using std::vector;
+
 static const char* const RESPONSE_STRING = "hello cppjieba nginx module.";
 
-CppJieba::MixSegment mix_segment(DICT_PATH, HMM_PATH, USER_DICT_PATH);
+inline unsigned char fromHex(unsigned char x) 
+{
+    return isdigit(x) ? x - '0' : x - 'A' + 10;
+}
+
+static void URLDecode(const string &sIn, string& sOut)
+{
+    for( size_t ix = 0; ix < sIn.size(); ix++ )
+    {
+        unsigned char ch = 0;
+        if(sIn[ix]=='%')
+        {
+            ch = (fromHex(sIn[ix+1])<<4);
+            ch |= fromHex(sIn[ix+2]);
+            ix += 2;
+        }
+        else if(sIn[ix] == '+')
+        {
+            ch = ' ';
+        }
+        else
+        {
+            ch = sIn[ix];
+        }
+        sOut += (char)ch;
+    }
+}
+//CppJieba::MixSegment mix_segment(DICT_PATH, HMM_PATH, USER_DICT_PATH);
+CppJieba::MixSegment * mix_segment;//(DICT_PATH, HMM_PATH, USER_DICT_PATH);
 
 typedef struct {
     ngx_str_t output_words;
@@ -23,6 +54,8 @@ static void* ngx_cppjieba_create_loc_conf(ngx_conf_t* cf);
 
 // Copy HelloWorld argument to another place
 static char* ngx_cppjieba_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child);
+
+static ngx_int_t ngx_cppjieba_init(ngx_conf_t *cf) ;
 
 // Structure for the HelloWorld command
 static ngx_command_t ngx_cppjieba_commands[] = {
@@ -40,7 +73,7 @@ static ngx_command_t ngx_cppjieba_commands[] = {
 // Structure for the HelloWorld context
 static ngx_http_module_t cppjieba_nginx_module_ctx = {
     NULL,
-    NULL,
+    ngx_cppjieba_init,  //NULL,
     NULL,
     NULL,
     NULL,
@@ -65,15 +98,14 @@ ngx_module_t cppjieba_nginx_module = {
     NGX_MODULE_V1_PADDING
 };
 
-static void print_debug_file(const char * str) {
+static void print_debug_file(const std::string& str) {
     FILE * fp;
     fp = fopen("/tmp/nginx_debug.log", "a");
-    fprintf(fp, "%s\n", str);
+    fprintf(fp, "%s\n", str.c_str());
     fclose(fp);
 }
 
 static ngx_int_t ngx_cppjieba_handler(ngx_http_request_t* r) {
-    print_debug_file("69");
     ngx_int_t rc;
     ngx_buf_t* b;
     ngx_chain_t out;
@@ -89,18 +121,25 @@ static ngx_int_t ngx_cppjieba_handler(ngx_http_request_t* r) {
     //r->headers_out.content_type.data = (u_char*)"text/plain";
 
     if (r->method == NGX_HTTP_GET) {
-        size_t i;
-        FILE * fp;
-        fp = fopen("/tmp/nginx_debug.log", "a");
-        fprintf(fp, "method is get. ");
-        for(i = 0; i < r->uri.len; i++) {
-            fprintf(fp, "%c", r->uri.data[i]);
+        print_debug_file("method is get");
+        std::string uri((const char*)r->uri.data, r->uri.len);
+        print_debug_file(uri);
+        if(r->args.len > 0) {
+            string args((const char*)r->args.data, r->args.len);
+            print_debug_file(args);
+            string sentence;
+            URLDecode(args, sentence);
+            vector<string> words;
+            mix_segment->cut(sentence, words);
+            string res;
+            res << words;
+            print_debug_file(res);
         }
-        fprintf(fp, "\n");
-        fclose(fp);
+        else {
+            print_debug_file("args.len == 0");
+        }
     }
 
-    print_debug_file("94");
     b = (ngx_buf_t*)ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
 
     out.buf = b;
@@ -126,7 +165,6 @@ static ngx_int_t ngx_cppjieba_handler(ngx_http_request_t* r) {
         return rc;
     }
 
-    print_debug_file("122");
     return ngx_http_output_filter(r, &out);
 }
 
@@ -156,4 +194,10 @@ static char* ngx_cppjieba(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
     clcf->handler = ngx_cppjieba_handler;
     ngx_conf_set_str_slot(cf, cmd, conf);
     return NGX_CONF_OK;
+}
+
+static ngx_int_t ngx_cppjieba_init(ngx_conf_t *cf) 
+{
+    mix_segment = new CppJieba::MixSegment(DICT_PATH, HMM_PATH, USER_DICT_PATH);
+    return NGX_OK;
 }
