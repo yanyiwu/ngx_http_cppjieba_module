@@ -10,6 +10,9 @@ extern "C" {
 using std::string;
 using std::vector;
 
+static ngx_str_t g_cppjieba_conf_arg1;
+static ngx_str_t g_cppjieba_conf_arg2;
+
 inline unsigned char fromHex(unsigned char x) 
 {
     return isdigit(x) ? x - '0' : x - 'A' + 10;
@@ -69,7 +72,7 @@ typedef struct {
 } ngx_http_cppjieba_loc_conf_t;
 
 // To process HelloWorld command arguments
-static char* ngx_http_cppjieba(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
+static char* ngx_http_cppjieba_set_conf(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 
 // Allocate memory for HelloWorld command
 static void* ngx_http_cppjieba_create_loc_conf(ngx_conf_t* cf);
@@ -77,14 +80,15 @@ static void* ngx_http_cppjieba_create_loc_conf(ngx_conf_t* cf);
 // Copy HelloWorld argument to another place
 static char* ngx_http_cppjieba_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child);
 
-static ngx_int_t ngx_http_cppjieba_init(ngx_cycle_t *cf) ;
+static ngx_int_t ngx_http_cppjieba_init(ngx_cycle_t *cf);
+static void ngx_http_cppjieba_finalize(ngx_cycle_t *cf);
 
 // Structure for the HelloWorld command
 static ngx_command_t ngx_http_cppjieba_commands[] = {
     {
         ngx_string("cppjieba"), // The command name
-        NGX_HTTP_LOC_CONF | NGX_CONF_TAKE1,
-        ngx_http_cppjieba, // The command handler
+        NGX_HTTP_LOC_CONF | NGX_CONF_TAKE2,
+        ngx_http_cppjieba_set_conf, // The command handler
         NGX_HTTP_LOC_CONF_OFFSET,
         offsetof(ngx_http_cppjieba_loc_conf_t, output_words),
         NULL
@@ -112,22 +116,13 @@ ngx_module_t ngx_http_cppjieba_module = {
     NGX_HTTP_MODULE,
     NULL,
     NULL,
-    ngx_http_cppjieba_init,  //NULL,
+    ngx_http_cppjieba_init,
     NULL,
     NULL,
-    NULL,
+    ngx_http_cppjieba_finalize,
     NULL,
     NGX_MODULE_V1_PADDING
 };
-
-/*
-static void print_debug_file(const std::string& str) {
-    FILE * fp;
-    fp = fopen("/tmp/nginx_debug.log", "a");
-    fprintf(fp, "%s\n", str.c_str());
-    fclose(fp);
-}
-*/
 
 static ngx_int_t ngx_http_cppjieba_handler(ngx_http_request_t* r) {
     ngx_int_t rc;
@@ -200,16 +195,63 @@ static char* ngx_http_cppjieba_merge_loc_conf(ngx_conf_t* cf, void* parent, void
     return NGX_CONF_OK;
 }
 
-static char* ngx_http_cppjieba(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
+static char* ngx_http_cppjieba_set_conf(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
     ngx_http_core_loc_conf_t* clcf;
     clcf = (ngx_http_core_loc_conf_t*)ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     clcf->handler = ngx_http_cppjieba_handler;
     ngx_conf_set_str_slot(cf, cmd, conf);
+    if (cf->args->nelts != 3) {
+        ngx_log_error(NGX_LOG_ERR, cf->log, 0, " [the number of conf'a args is not 3] ");
+        return (char*)NGX_CONF_ERROR;
+    }
+    ngx_str_t * value = (ngx_str_t *)cf->args->elts;
+    g_cppjieba_conf_arg1 = value[1];
+    g_cppjieba_conf_arg2 = value[2];
     return NGX_CONF_OK;
 }
 
 static ngx_int_t ngx_http_cppjieba_init(ngx_cycle_t *cf) 
 {
-    mix_segment = new CppJieba::MixSegment(DICT_PATH, HMM_PATH, USER_DICT_PATH);
+    mix_segment = new CppJieba::MixSegment(
+                string((const char *)g_cppjieba_conf_arg1.data, g_cppjieba_conf_arg1.len), 
+                string((const char *)g_cppjieba_conf_arg2.data, g_cppjieba_conf_arg2.len));
     return NGX_OK;
 }
+
+static void ngx_http_cppjieba_finalize(ngx_cycle_t *cf)
+{
+    delete mix_segment;
+    mix_segment = NULL;
+}
+
+/*
+static ngx_int_t get_post_content(ngx_http_request_t *r, char * data_buf, size_t content_length) {
+    ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "[get_post_content] [content_length:%d]", content_length); //DEBUG
+    if(r->request_body == NULL) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "reqeust_body:null");
+        return NGX_ERROR;
+    }
+    ngx_chain_t* bufs = r->request_body->bufs;
+    ngx_buf_t* buf = NULL;
+    size_t body_length = 0;
+    size_t buf_length;
+    while(bufs) {
+        buf = bufs->buf;
+        bufs = bufs->next;
+        buf_length = buf->last - buf->pos;
+        if(body_length + buf_length > content_length) {
+            memcpy(data_buf + body_length, buf->pos, content_length - body_length);
+            body_length = content_length;
+            break;
+        }
+        memcpy(data_buf + body_length, buf->pos, buf->last - buf->pos);
+        body_length += buf->last - buf->pos;
+    }
+    if(body_length != content_length) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "get_post_content's body_length != content_length in headers");
+        return NGX_ERROR;
+    }
+    return NGX_OK;
+}
+
+*/
