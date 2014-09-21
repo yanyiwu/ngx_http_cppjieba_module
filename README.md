@@ -35,6 +35,9 @@ $(CXX) -c $(CFLAGS)  $(ALL_INCS) \
     /tmp/ngx_http_cppjieba_module/src/ngx_http_cppjieba_module.cpp
 
 ```
+
+这三步做完就可以 `make && sudo make install` nginx 了。
+
 # 4. 修改 Nginx 配置文件 /usr/local/nginx/conf/nginx.conf
 location /cppjieba {
     cppjieba /tmp/ngx_http_cppjieba_module/dict/jieba.dict.utf8 /tmp/ngx_http_cppjieba_module/dict/hmm_model.utf8;
