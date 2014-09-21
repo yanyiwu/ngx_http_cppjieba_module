@@ -4,14 +4,13 @@ extern "C" {
 #include <ngx_http.h>
 }
 
-#include "dict_path.h"
 #include "CppJieba/MixSegment.hpp"
 
 using std::string;
 using std::vector;
 
-static ngx_str_t g_cppjieba_conf_arg1;
-static ngx_str_t g_cppjieba_conf_arg2;
+//static ngx_str_t g_cppjieba_conf_arg1;
+//static ngx_str_t g_cppjieba_conf_arg2;
 
 inline unsigned char fromHex(unsigned char x) 
 {
@@ -65,7 +64,7 @@ static void URLDecode(const string &sIn, string& sOut)
         sOut += (char)ch;
     }
 }
-CppJieba::MixSegment * mix_segment;//(DICT_PATH, HMM_PATH, USER_DICT_PATH);
+CppJieba::MixSegment * g_mix_segment;//(DICT_PATH, HMM_PATH, USER_DICT_PATH);
 
 typedef struct {
     ngx_str_t output_words;
@@ -80,9 +79,10 @@ static void* ngx_http_cppjieba_create_loc_conf(ngx_conf_t* cf);
 // Copy HelloWorld argument to another place
 static char* ngx_http_cppjieba_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child);
 
-static ngx_int_t ngx_http_cppjieba_init(ngx_cycle_t *cf);
-static void ngx_http_cppjieba_finalize(ngx_cycle_t *cf);
+//static ngx_int_t ngx_http_cppjieba_init(ngx_cycle_t *cf);
+//static void ngx_http_cppjieba_finalize(ngx_cycle_t *cf);
 
+static ngx_int_t get_post_content(ngx_http_request_t *r, char * data_buf, size_t content_length);
 // Structure for the HelloWorld command
 static ngx_command_t ngx_http_cppjieba_commands[] = {
     {
@@ -116,18 +116,28 @@ ngx_module_t ngx_http_cppjieba_module = {
     NGX_HTTP_MODULE,
     NULL,
     NULL,
-    ngx_http_cppjieba_init,
+    NULL, //ngx_http_cppjieba_init,
     NULL,
     NULL,
-    ngx_http_cppjieba_finalize,
+    NULL, //ngx_http_cppjieba_finalize,
     NULL,
     NGX_MODULE_V1_PADDING
 };
+
+static void ngx_http_cppjieba_post_handler(ngx_http_request_t* r);
 
 static ngx_int_t ngx_http_cppjieba_handler(ngx_http_request_t* r) {
     ngx_int_t rc;
     ngx_buf_t* b;
     ngx_chain_t out;
+
+    if(r->method & NGX_HTTP_POST) {
+        ngx_int_t rc = ngx_http_read_client_request_body(r, ngx_http_cppjieba_post_handler);
+        if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+            return rc;
+        }
+        return NGX_DONE;
+    }
 
     if(!(r->method & NGX_HTTP_GET)) {
         return NGX_HTTP_NOT_ALLOWED;
@@ -142,7 +152,7 @@ static ngx_int_t ngx_http_cppjieba_handler(ngx_http_request_t* r) {
     string sentence;
     URLDecode(args, sentence);
     vector<string> words;
-    mix_segment->cut(sentence, words);
+    g_mix_segment->cut(sentence, words);
     string response;
     //string tmp;
     //tmp << words;
@@ -205,26 +215,27 @@ static char* ngx_http_cppjieba_set_conf(ngx_conf_t* cf, ngx_command_t* cmd, void
         return (char*)NGX_CONF_ERROR;
     }
     ngx_str_t * value = (ngx_str_t *)cf->args->elts;
-    g_cppjieba_conf_arg1 = value[1];
-    g_cppjieba_conf_arg2 = value[2];
+
+    g_mix_segment = new CppJieba::MixSegment(
+                string((const char *)value[1].data, value[1].len), 
+                string((const char *)value[2].data, value[2].len));
     return NGX_CONF_OK;
 }
 
-static ngx_int_t ngx_http_cppjieba_init(ngx_cycle_t *cf) 
-{
-    mix_segment = new CppJieba::MixSegment(
-                string((const char *)g_cppjieba_conf_arg1.data, g_cppjieba_conf_arg1.len), 
-                string((const char *)g_cppjieba_conf_arg2.data, g_cppjieba_conf_arg2.len));
-    return NGX_OK;
-}
+//static ngx_int_t ngx_http_cppjieba_init(ngx_cycle_t *cf) 
+//{
+//    g_mix_segment = new CppJieba::MixSegment(
+//                string((const char *)g_cppjieba_conf_arg1.data, g_cppjieba_conf_arg1.len), 
+//                string((const char *)g_cppjieba_conf_arg2.data, g_cppjieba_conf_arg2.len));
+//    return NGX_OK;
+//}
 
-static void ngx_http_cppjieba_finalize(ngx_cycle_t *cf)
-{
-    delete mix_segment;
-    mix_segment = NULL;
-}
+//static void ngx_http_cppjieba_finalize(ngx_cycle_t *cf)
+//{
+//    delete g_mix_segment;
+//    g_mix_segment = NULL;
+//}
 
-/*
 static ngx_int_t get_post_content(ngx_http_request_t *r, char * data_buf, size_t content_length) {
     ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "[get_post_content] [content_length:%d]", content_length); //DEBUG
     if(r->request_body == NULL) {
@@ -254,4 +265,70 @@ static ngx_int_t get_post_content(ngx_http_request_t *r, char * data_buf, size_t
     return NGX_OK;
 }
 
-*/
+
+static ngx_int_t ngx_http_cppjieba_send_response(ngx_http_request_t * r, const char* type, const char* data_buf, size_t len) {
+    ngx_int_t rc;
+    ngx_buf_t* b;
+    ngx_chain_t out;
+
+    b = ngx_create_temp_buf(r->pool, len);
+    if (b == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    ngx_memcpy(b->pos, data_buf, len);
+    b->last = b->pos + len;
+    b->last_buf = 1;
+
+    out.buf = b;
+    out.next = NULL;
+
+    r->headers_out.status = NGX_HTTP_OK;
+    r->headers_out.content_length_n = len;
+    r->headers_out.content_type.data = (u_char*) type;
+    r->headers_out.content_type.len = strlen(type);
+
+    rc = ngx_http_send_header(r);
+    if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+        return rc;
+    }
+
+    return ngx_http_output_filter(r, &out);
+}
+
+static void ngx_http_cppjieba_post_handler(ngx_http_request_t* r) {
+    if(r->headers_in.content_length_n == 0) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "r->headers_in.content_length_n is 0");
+        ngx_http_finalize_request(r, NGX_ERROR);
+        return;
+    }
+    ngx_int_t rc;
+    char * data_buf = NULL;
+    data_buf = (char*) ngx_pcalloc(r->pool, r->headers_in.content_length_n + 1);
+    if (data_buf == NULL) {
+        ngx_http_finalize_request(r, NGX_ERROR);
+        return;
+    }
+
+    if (NGX_ERROR == get_post_content(r, data_buf, r->headers_in.content_length_n)) {
+        ngx_http_finalize_request(r, NGX_ERROR);
+        return;
+    }
+
+    string sentence;
+    URLDecode(data_buf, sentence);
+    vector<string> words;
+    g_mix_segment->cut(sentence, words);
+    string response;
+    response << words;
+
+
+    rc = ngx_http_cppjieba_send_response(
+                r, 
+                "text/plain", 
+                response.c_str(), 
+                response.size());
+
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "[ngx_http_cppjieba_send_response] [response size:%d]", response.size());
+    ngx_http_finalize_request(r, rc);
+}

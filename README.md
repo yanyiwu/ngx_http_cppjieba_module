@@ -33,16 +33,11 @@ LINK = $(CXX)
 $(CXX) -c $(CFLAGS)  $(ALL_INCS) \
     -o objs/addon/src/ngx_http_cppjieba_module.o \
     /tmp/ngx_http_cppjieba_module/src/ngx_http_cppjieba_module.cpp
-# 4. 修改词典路径： /tmp/ngx_http_cppjieba_module/src/dict_path.h ， 如下
-const char* const DICT_PATH = "/tmp/ngx_http_cppjieba_module/dict/jieba.dict.utf8";
-const char* const HMM_PATH = "/tmp/ngx_http_cppjieba_module/dict/hmm_model.utf8";
-const char* const USER_DICT_PATH = "/tmp/ngx_http_cppjieba_module/dict/user.dict.utf8";
-```
 
 ```
-# 5. 修改 Nginx 配置文件 /usr/local/nginx/conf/nginx.conf
+# 4. 修改 Nginx 配置文件 /usr/local/nginx/conf/nginx.conf
 location /cppjieba {
-    cppjieba /tmp/ngx_http_cppjieba_module/dict/;
+    cppjieba /tmp/ngx_http_cppjieba_module/dict/jieba.dict.utf8 /tmp/ngx_http_cppjieba_module/dict/hmm_model.utf8;
 }
 ```
 
