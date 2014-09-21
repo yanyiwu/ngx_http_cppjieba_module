@@ -2,7 +2,8 @@
 
 ## 简介
 
-[CppJieba] 的 `Nginx` 扩展模块.
+[CppJieba] 的 `Nginx` 扩展模块。
+需要了解源码的可以参看 [NginxModuleDevelopment] 。
 
 ## 用法
 
@@ -54,8 +55,16 @@ location /cppjieba {
 
 ## 测试 
 
+### GET
+
 ```
 curl "http://127.0.0.1/cppjieba?s=长春市长春药店"
+```
+
+### POST
+
+```
+curl --data "长春市长春药店" "http://127.0.0.1/cppjieba"
 ```
 
 预期结果：
@@ -78,3 +87,4 @@ http://yanyiwu.com/cppjieba?s=长春市长春药店
 `i@yanyiwu.com`
 
 [CppJieba]:https://github.com/aszxqw/cppjieba
+[NginxModuleDevelopment]:http://yanyiwu.com/work/2014/09/21/nginx-module-development-stuff.html
