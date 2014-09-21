@@ -144,13 +144,13 @@ static ngx_int_t ngx_http_cppjieba_handler(ngx_http_request_t* r) {
     }
 
     // args is s=xxxxx
-    if(r->args.len < 2) {
+    ngx_str_t value;
+    if (NGX_OK != ngx_http_arg(r, (u_char*)"s", 1, &value)) {
         return NGX_HTTP_BAD_REQUEST;
     }
 
-    string args((const char*)(r->args.data + 2), r->args.len - 2);
     string sentence;
-    URLDecode(args, sentence);
+    URLDecode(string((char*)value.data, value.len), sentence);
     vector<string> words;
     g_mix_segment->cut(sentence, words);
     string response;
