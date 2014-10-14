@@ -76,12 +76,6 @@ curl --data "长春市长春药店" "http://127.0.0.1/cppjieba"
 用 `chrome` 打开上述链接也可以，不过要 **记得** 设置浏览器的页面编码方式为 `utf-8` 。
 
 
-## 演示
-
-```
-http://yanyiwu.com/cppjieba?s=长春市长春药店
-```
-
 ## 客服
 
 `i@yanyiwu.com`
