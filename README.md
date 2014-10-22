@@ -1,9 +1,11 @@
-# `ngx_http_cppjieba_module`
+# ngx\_http\_cppjieba\_module
 
 ## 简介
 
 [CppJieba] 的 `Nginx` 扩展模块。
 需要了解源码的可以参看 [NginxModuleDevelopment] 。
+
+注意，此项目只是作者的业余项目，未经任何线上流量测试，请谨慎使用。
 
 ## 用法
 
@@ -41,7 +43,7 @@ $(CXX) -c $(CFLAGS)  $(ALL_INCS) \
 
 # 4. 修改 Nginx 配置文件 /usr/local/nginx/conf/nginx.conf
 location /cppjieba {
-    cppjieba /tmp/ngx_http_cppjieba_module/dict/jieba.dict.utf8 /tmp/ngx_http_cppjieba_module/dict/hmm_model.utf8;
+    cppjieba /tmp/ngx_http_cppjieba_module/dict/jieba.dict.utf8 /tmp/ngx_http_cppjieba_module/dict/hmm_model.utf8 /tmp/ngx_http_cppjieba_module/dict/user.dict.utf8;
 }
 ```
 

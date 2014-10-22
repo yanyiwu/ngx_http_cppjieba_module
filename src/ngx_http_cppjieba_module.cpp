@@ -87,7 +87,7 @@ static ngx_int_t get_post_content(ngx_http_request_t *r, char * data_buf, size_t
 static ngx_command_t ngx_http_cppjieba_commands[] = {
     {
         ngx_string("cppjieba"), // The command name
-        NGX_HTTP_LOC_CONF | NGX_CONF_TAKE2,
+        NGX_HTTP_LOC_CONF | NGX_CONF_TAKE3,
         ngx_http_cppjieba_set_conf, // The command handler
         NGX_HTTP_LOC_CONF_OFFSET,
         offsetof(ngx_http_cppjieba_loc_conf_t, output_words),
@@ -210,15 +210,16 @@ static char* ngx_http_cppjieba_set_conf(ngx_conf_t* cf, ngx_command_t* cmd, void
     clcf = (ngx_http_core_loc_conf_t*)ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     clcf->handler = ngx_http_cppjieba_handler;
     ngx_conf_set_str_slot(cf, cmd, conf);
-    if (cf->args->nelts != 3) {
-        ngx_log_error(NGX_LOG_ERR, cf->log, 0, " [the number of conf'a args is not 3] ");
+    if (cf->args->nelts != 4) {
+        ngx_log_error(NGX_LOG_ERR, cf->log, 0, " [the number of conf'a args is not 4] ");
         return (char*)NGX_CONF_ERROR;
     }
     ngx_str_t * value = (ngx_str_t *)cf->args->elts;
 
     g_mix_segment = new CppJieba::MixSegment(
                 string((const char *)value[1].data, value[1].len), 
-                string((const char *)value[2].data, value[2].len));
+                string((const char *)value[2].data, value[2].len),
+                string((const char *)value[3].data, value[3].len));
     return NGX_CONF_OK;
 }
 
