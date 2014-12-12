@@ -5,9 +5,14 @@
 [CppJieba] 的 `Nginx` 扩展模块。
 需要了解源码的可以参看 [NginxModuleDevelopment] 。
 
-注意，此项目只是作者的业余项目，未经任何线上流量测试，请谨慎使用。
+## 支持Docker
+
+```
+docker pull docker.cn/yanyiwu/nginx_cppjieba_server
+```
 
 ## 用法
+
 
 ### 安装和配置
 
